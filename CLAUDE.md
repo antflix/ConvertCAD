@@ -23,8 +23,8 @@ Other AI assistants read AGENTS.md, which points here. People: same rules.
 
 1. **Releases are built with exact versions.** `requirements-lock.txt` lists
    every library with its exact version (build tools included). Python itself
-   is pinned in `.github/workflows/build.yml` (3.12.10 on Windows, 3.12.15 on
-   Linux and macOS). `requirements.txt` keeps the allowed *ranges*, for running from the
+   is pinned in `.github/workflows/build.yml` (3.12.10 on Windows and macOS,
+   3.12.15 on Linux). `requirements.txt` keeps the allowed *ranges*, for running from the
    source code.
 2. **Never** change a locked version without a reason below, never let a
    build take "the newest version", and never add a library without adding
@@ -36,8 +36,8 @@ Other AI assistants read AGENTS.md, which points here. People: same rules.
      Dependabot opens security pull requests. Apply such updates promptly;
    - **or brings a fix or a feature ConvertCAD needs** — say which in
      `CHANGELOG.md`.
-   Python 3.12 no longer gets Windows binaries: to get Python security fixes
-   on Windows, move to a newer Python version (a deliberate update, tested).
+   Python 3.12 no longer gets Windows or macOS binaries: to get Python
+   security fixes there, move to a newer Python version (a deliberate update, tested).
 4. **How to update one library:**
    `uv pip compile requirements-dev.txt --universal --python-version 3.12 --upgrade-package <name> -o requirements-lock.txt`
    (widen its range in `requirements.txt` if needed), run the tests and

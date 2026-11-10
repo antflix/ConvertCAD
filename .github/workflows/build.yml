@@ -277,10 +277,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # same Python as Linux (see CLAUDE.md, "Dependencies")
+      # Python is pinned (see CLAUDE.md, "Dependencies"). As on Windows,
+      # 3.12.10 is the last 3.12 release with macOS binaries (no arm64
+      # build of 3.12.11+ exists for setup-python).
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12.15"
+          python-version: "3.12.10"
           cache: pip
           cache-dependency-path: requirements*.txt
 
