@@ -8,6 +8,8 @@ This script renders it to:
     assets/icon.png   256 x 256 PNG
     assets/icon.ico   multi-size Windows icon (16 ... 256 px) used by
                       PyInstaller for ConvertCAD.exe
+    assets/icon.icns  macOS icon (16 ... 1024 px) for ConvertCAD.app
+                      (made at build time, not kept in the repository)
 
 Only PySide6 is needed (already a dependency). Run from the repository root:
 
@@ -30,6 +32,10 @@ from convertcad.ui.icons import APP_ICON_SVG  # noqa: E402
 
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)   # sizes Windows asks for
 ASSETS = os.path.join(ROOT, "assets")
+# macOS .icns entries holding PNG data: type -> size in pixels
+ICNS_TYPES = (("icp4", 16), ("icp5", 32), ("icp6", 64), ("ic07", 128),
+              ("ic08", 256), ("ic09", 512), ("ic10", 1024),
+              ("ic11", 32), ("ic12", 64), ("ic13", 256), ("ic14", 512))
 
 
 def render_png(renderer: QSvgRenderer, px: int) -> bytes:
@@ -69,6 +75,20 @@ def write_ico(path: str, images: dict) -> None:
         fh.write(header + entries + blobs)
 
 
+def write_icns(path: str, images: dict) -> None:
+    """Pack PNG images into one .icns file (macOS 10.7+ reads PNG entries).
+
+    Layout: 'icns' + total length (big-endian), then for each entry its
+    4-letter type + entry length (8-byte header included) + the PNG data.
+    """
+    body = b""
+    for kind, px in ICNS_TYPES:
+        png = images[px]
+        body += kind.encode("ascii") + struct.pack(">I", len(png) + 8) + png
+    with open(path, "wb") as fh:
+        fh.write(b"icns" + struct.pack(">I", len(body) + 8) + body)
+
+
 def main() -> int:
     app = QGuiApplication(sys.argv[:1])          # noqa: F841 (needed by Qt)
     os.makedirs(ASSETS, exist_ok=True)
@@ -76,13 +96,17 @@ def main() -> int:
     if not renderer.isValid():
         print("ERROR: APP_ICON_SVG is not a valid SVG drawing.")
         return 1
-    images = {px: render_png(renderer, px) for px in SIZES}
+    images = {px: render_png(renderer, px)
+              for px in set(SIZES) | {px for _, px in ICNS_TYPES}}
     with open(os.path.join(ASSETS, "icon.svg"), "w", encoding="utf-8") as fh:
         fh.write(APP_ICON_SVG + "\n")
     with open(os.path.join(ASSETS, "icon.png"), "wb") as fh:
         fh.write(images[256])
-    write_ico(os.path.join(ASSETS, "icon.ico"), images)
-    print("Written: assets/icon.svg, assets/icon.png, assets/icon.ico "
+    write_ico(os.path.join(ASSETS, "icon.ico"),
+              {px: images[px] for px in SIZES})
+    write_icns(os.path.join(ASSETS, "icon.icns"), images)
+    print("Written: assets/icon.svg, assets/icon.png, assets/icon.ico, "
+          "assets/icon.icns "
           f"({', '.join(str(s) for s in SIZES)} px)")
     return 0
 

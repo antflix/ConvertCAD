@@ -32,6 +32,10 @@ desktop.ini
 
 # LibreDWG Linux build (made by scripts/build_libredwg.sh linux)
 vendor/libredwg/linux-x86_64/
+# ... and the macOS one (scripts/build_libredwg.sh macos)
+vendor/libredwg/macos-*/
+# macOS icon, made by scripts/make_icon.py at build time
+assets/icon.icns
 
 # OCR models: offline build (vendor/ocr_models) and release files
 # (scripts/get_ocr_models.py)

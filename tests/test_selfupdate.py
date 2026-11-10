@@ -122,9 +122,11 @@ def test_manifest_lists_the_program_files_only(tmp_path):
     assert files["README.md"]["size"] == 6 and len(files["README.md"]["sha256"]) == 64
 
 
-def test_update_downloads_only_the_changed_files(tmp_path, server):
+def test_update_downloads_only_the_changed_files(tmp_path, server, monkeypatch):
     www, base = server
     app = _setup(tmp_path, www)
+    if su.sys.platform == "darwin":          # the update engine, not the .app
+        monkeypatch.setattr(su, "install_kind", lambda app_dir="": "linux-portable")
     url = f"{base}/ConvertCAD-2.0.0-win64-portable.zip"
     assert su.can_update_files(app) == (True, "")
 
@@ -231,6 +233,15 @@ def test_install_kinds(tmp_path, monkeypatch):
     _make_folder(app, {"unins000.exe": b""})
     assert su.install_kind(app) == "win-installed"         # by the installer
     assert su.FULL_DOWNLOAD["win-installed"] == "-win64-setup.exe"
+
+
+def test_macos_app_gets_the_full_download(tmp_path, monkeypatch):
+    monkeypatch.setattr(su.sys, "platform", "darwin")
+    app = _make_folder(str(tmp_path / "m"), {"ConvertCAD": b""})
+    assert su.install_kind(app) == "macos-app"
+    assert su.can_update_files(app)[0] is False       # whole app replaced
+    assert su.FULL_DOWNLOAD["macos-app"].endswith(".dmg")
+    assert su.platform_tag().startswith("macos-")
 
 
 def test_helper_copy_has_the_runtime_but_not_the_big_libraries(tmp_path):

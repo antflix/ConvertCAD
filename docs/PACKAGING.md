@@ -78,11 +78,33 @@ a program built against a recent glibc does not start on an older one (CI uses U
   system libraries Qt needs.
 - Downloaded OCR models go to `~/.local/share/convertcad/ocr_models` (all three formats).
 
+## macOS
+
+```bash
+./scripts/setup_venv.sh           # once
+./scripts/build_macos.sh          # ConvertCAD.app + .dmg + .zip (builds LibreDWG the first time)
+```
+
+Run it on a Mac with the Xcode command line tools (`xcode-select --install`). The build is
+for the Mac's own architecture (CI: Apple Silicon, `macos-15` runner → `-macos-arm64`);
+`MACOSX_DEPLOYMENT_TARGET` (11.0) sets the oldest macOS for LibreDWG and the app.
+
+- `dist/ConvertCAD.app` holds both programs: `Contents/MacOS/ConvertCAD` (the window) and
+  `Contents/MacOS/ConvertCAD-cli` (command line). The icon (`assets/icon.icns`) is made by
+  `scripts/make_icon.py` at build time.
+- The app is signed **ad hoc** (no Apple Developer ID, not notarized): users confirm it
+  once (right-click → Open). Proper signing needs an Apple Developer account
+  (`codesign_identity` in `ConvertCAD.spec`, then `xcrun notarytool`).
+- Updates: the app is replaced as a whole (`selfupdate.install_kind()` = `macos-app`, the
+  update bar offers the `.dmg`); it is never patched file by file, so its programs keep
+  their archive inside (no separate `.pkg` there, which would break the bundle signature).
+- Downloaded OCR models go to `~/Library/Application Support/ConvertCAD/ocr_models`.
+
 ## What goes into every build
 
 | Part | Source | How it gets in |
 |---|---|---|
-| DWG converter | `vendor/libredwg/win64` (in Git) or `linux-x86_64` (built by `scripts/build_libredwg.sh linux`) | `ConvertCAD.spec` → `_internal/libredwg/` |
+| DWG converter | `vendor/libredwg/win64` (in Git), `linux-x86_64` or `macos-<arch>` (built by `scripts/build_libredwg.sh linux` / `macos`) | `ConvertCAD.spec` → `_internal/libredwg/` |
 | OCR + built-in model (≈ 30 MB) | `rapidocr` + `onnxruntime` packages (model included) | `ConvertCAD.spec` |
 | Other OCR models | not bundled: downloaded by the users | — (offline build: below) |
 
@@ -171,7 +193,7 @@ with a certificate of your own is still possible with `scripts\sign_windows.bat`
 2. `python -m pytest -q` and `python -m ruff check .`
 3. Commit and push to `main`.
 4. *Actions → build → Run workflow*, tick **Publish the release** (or push the tag
-   `v<version>`). The release `v<version>` is created with the five downloads and the
+   `v<version>`). The release `v<version>` is created with the seven downloads and the
    CHANGELOG section as notes; the website offers it at once. Users of 1.3.0 and later
    get it from the update bar (only the changed files on Windows).
 5. Only when `ocr_catalog.py` changed: run the **OCR models release** workflow.

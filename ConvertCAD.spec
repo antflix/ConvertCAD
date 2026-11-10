@@ -13,12 +13,16 @@ Output:
     CONVERTCAD_ONEFILE=1  dist/ConvertCAD.exe                 (single file:
                                                                easy to carry,
                                                                slower start)
+    macOS                 dist/ConvertCAD.app                 (application
+                          .../Contents/MacOS/ConvertCAD-cli    bundle + the
+                                                               console tool)
 
 Nothing is installed on the target computer: copy the folder (or the single
 exe) anywhere — USB stick included — and run it. No admin rights needed.
 
 Bundled with the program (no separate installation for the user):
-  * GNU LibreDWG (DWG output)     vendor/libredwg/win64 or linux-x86_64
+  * GNU LibreDWG (DWG output)     vendor/libredwg/win64, linux-x86_64 or
+                                  macos-<arch>
   * OCR: RapidOCR + the built-in  the rapidocr / onnxruntime packages
     PP-OCR model (English,
     French, Latin languages)
@@ -29,6 +33,7 @@ Bundled with the program (no separate installation for the user):
 """
 
 import os
+import platform
 import sys
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
@@ -38,7 +43,9 @@ sys.path.insert(0, ROOT)
 from convertcad import APP_AUTHOR, APP_NAME, APP_VERSION, APP_YEAR  # noqa: E402
 
 ONEFILE = os.environ.get("CONVERTCAD_ONEFILE", "0") == "1"
-ICON = os.path.join(ROOT, "assets", "icon.ico")
+MACOS = sys.platform == "darwin"
+# scripts/make_icon.py writes both (icon.icns: macOS application icon)
+ICON = os.path.join(ROOT, "assets", "icon.icns" if MACOS else "icon.ico")
 
 # ---- files the program reads at run time ---------------------------------
 datas = [(os.path.join(ROOT, "convertcad", "resources"), "convertcad/resources")]
@@ -52,8 +59,14 @@ datas += collect_data_files("rapidocr", excludes=["**/pytorch/**"])
 # GNU LibreDWG (DWG output), already built for this platform:
 #   Windows: vendor/libredwg/win64 (in the repository)
 #   Linux:   vendor/libredwg/linux-x86_64 (scripts/build_libredwg.sh linux)
-_LDWG = os.path.join(ROOT, "vendor", "libredwg",
-                     "win64" if sys.platform == "win32" else "linux-x86_64")
+#   macOS:   vendor/libredwg/macos-arm64 (scripts/build_libredwg.sh macos)
+if sys.platform == "win32":
+    _LDWG_DIR = "win64"
+elif MACOS:
+    _LDWG_DIR = f"macos-{platform.machine()}"
+else:
+    _LDWG_DIR = "linux-x86_64"
+_LDWG = os.path.join(ROOT, "vendor", "libredwg", _LDWG_DIR)
 _LDWG_EXE = "dxf2dwg.exe" if sys.platform == "win32" else "dxf2dwg"
 if os.path.isfile(os.path.join(_LDWG, _LDWG_EXE)):
     for name in sorted(os.listdir(_LDWG)):
@@ -181,12 +194,19 @@ common = dict(
     strip=False,
 )
 
+# macOS: the programs live inside ConvertCAD.app, which is replaced as a whole
+# by an update (selfupdate.install_kind() == "macos-app", never patched file
+# by file), so the program archive stays inside each program there: a
+# separate .pkg file next to a program in Contents/MacOS breaks the bundle's
+# code signature.
+SEPARATE_PKG = not MACOS
+
 if ONEFILE:
     exe = EXE(pyz, a.scripts, a.binaries, a.datas, [],   # noqa: F821
               runtime_tmpdir=None, **common)
 else:
     exe = EXE(pyz, a.scripts, [], exclude_binaries=True,  # noqa: F821
-              append_pkg=False, **common)
+              append_pkg=not SEPARATE_PKG, **common)
     # Console twin for scripts / batch files: ConvertCAD-cli.exe, same
     # folder, same libraries (no Qt needed).
     a_cli = Analysis(                                # noqa: F821
@@ -200,8 +220,36 @@ else:
     )
     a_cli.binaries = _keep(a_cli.binaries)
     exe_cli = EXE(PYZ(a_cli.pure), a_cli.scripts, [],  # noqa: F821
-                  exclude_binaries=True, append_pkg=False,
+                  exclude_binaries=True, append_pkg=not SEPARATE_PKG,
                   **dict(common, name=f"{APP_NAME}-cli", console=True))
     coll = COLLECT(exe, exe_cli,                     # noqa: F821
                    a.binaries, a.datas, a_cli.binaries, a_cli.datas,
                    name=APP_NAME, upx=False)
+
+    if MACOS:
+        # ConvertCAD.app: drag it to Applications. The console tool is
+        # Contents/MacOS/ConvertCAD-cli.
+        app = BUNDLE(                                # noqa: F821
+            coll,
+            name=f"{APP_NAME}.app",
+            icon=ICON if os.path.isfile(ICON) else None,
+            bundle_identifier="io.github.convertcad",
+            version=APP_VERSION,
+            info_plist={
+                "CFBundleName": APP_NAME,
+                "CFBundleDisplayName": APP_NAME,
+                "CFBundleShortVersionString": APP_VERSION,
+                "CFBundleVersion": APP_VERSION,
+                "NSHumanReadableCopyright":
+                    f"Copyright (c) {APP_YEAR} {APP_AUTHOR}",
+                "NSHighResolutionCapable": True,
+                "LSMinimumSystemVersion": "11.0",
+                # "Open with ConvertCAD" for PDF files in the Finder
+                "CFBundleDocumentTypes": [{
+                    "CFBundleTypeName": "PDF document",
+                    "CFBundleTypeRole": "Viewer",
+                    "LSHandlerRank": "Alternate",
+                    "LSItemContentTypes": ["com.adobe.pdf"],
+                }],
+            },
+        )

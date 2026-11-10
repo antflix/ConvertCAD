@@ -96,7 +96,13 @@ def _candidate_dirs() -> List[str]:
     project = os.path.dirname(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))))
     bundle = getattr(sys, "_MEIPASS", "")
-    platform_dir = "win64" if os.name == "nt" else "linux-x86_64"
+    if os.name == "nt":
+        platform_dir = "win64"
+    elif sys.platform == "darwin":
+        import platform
+        platform_dir = f"macos-{platform.machine()}"   # arm64 / x86_64
+    else:
+        platform_dir = "linux-x86_64"
     dirs = [os.path.join(exe_dir, "libredwg"),
             os.path.join(project, "libredwg"),
             os.path.join(project, "vendor", "libredwg", platform_dir)]

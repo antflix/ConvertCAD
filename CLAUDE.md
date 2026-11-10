@@ -24,7 +24,7 @@ Other AI assistants read AGENTS.md, which points here. People: same rules.
 1. **Releases are built with exact versions.** `requirements-lock.txt` lists
    every library with its exact version (build tools included). Python itself
    is pinned in `.github/workflows/build.yml` (3.12.10 on Windows, 3.12.15 on
-   Linux). `requirements.txt` keeps the allowed *ranges*, for running from the
+   Linux and macOS). `requirements.txt` keeps the allowed *ranges*, for running from the
    source code.
 2. **Never** change a locked version without a reason below, never let a
    build take "the newest version", and never add a library without adding
@@ -53,7 +53,8 @@ Other AI assistants read AGENTS.md, which points here. People: same rules.
   parts from the release's portable zip. Do not break these conditions:
   - `ConvertCAD.spec`: our own code is collected as separate `.pyc` files
     (`OWN_CODE_AS_FILES`) and the program archives are separate files
-    (`append_pkg=False`, `ConvertCAD.pkg`, `ConvertCAD-cli.pkg`);
+    (`append_pkg=False`, `ConvertCAD.pkg`, `ConvertCAD-cli.pkg`) — except in
+    the macOS app (`SEPARATE_PKG`), which is always replaced as a whole;
   - builds run with `PYTHONHASHSEED=0` and `SOURCE_DATE_EPOCH` (identical
     files for identical code);
   - `scripts/make_manifest.py` runs LAST on the final program folder (after

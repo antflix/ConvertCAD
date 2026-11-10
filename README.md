@@ -8,7 +8,7 @@
   <b>Convert 2D PDF drawings into editable DXF and DWG files built with real CAD entities.</b><br>
   Lines, polylines, arcs, circles, splines, hatches, text, <b>true dimensions</b>, <b>leaders</b>,
   <b>layers</b> and <b>blocks</b> — not exploded line spaghetti.<br>
-  Windows (portable or installer) · Linux (AppImage, .deb) · conversions 100 % offline · English · Français · Español · Deutsch · العربية
+  Windows (portable or installer) · Linux (AppImage, .deb) · macOS (Apple Silicon) · conversions 100 % offline · English · Français · Español · Deutsch · العربية
 </p>
 
 <p align="center">
@@ -130,6 +130,19 @@ Other OCR languages are downloaded from the program when needed, then work offli
 | `convertcad_<version>_amd64.deb` | Debian / Ubuntu / Mint: `sudo apt install ./convertcad_<version>_amd64.deb`, then *ConvertCAD* in the menu or `convertcad` |
 | `ConvertCAD-<version>-linux-x86_64.tar.gz` | Portable folder: `./ConvertCAD/ConvertCAD` (needs `sudo apt install libxcb-cursor0`) |
 
+### macOS (Apple Silicon, macOS 11 or newer)
+
+| Download | Use |
+|---|---|
+| `ConvertCAD-<version>-macos-arm64.dmg` | Open it and drag **ConvertCAD** to **Applications** |
+| `ConvertCAD-<version>-macos-arm64.zip` | The same app, zipped: unzip and move `ConvertCAD.app` to Applications |
+
+The command line is inside the app: `/Applications/ConvertCAD.app/Contents/MacOS/ConvertCAD-cli`.
+
+> The app is not notarized by Apple, so macOS blocks it the first time: **right-click
+> ConvertCAD → Open → Open**, or *System Settings → Privacy & Security → Open Anyway*.
+> If it reports the app as "damaged", run `xattr -dr com.apple.quarantine /Applications/ConvertCAD.app`.
+
 ### From the source code (developers)
 
 Requires **Python 3.10 or newer** ([python.org](https://www.python.org/downloads/),
@@ -142,13 +155,14 @@ scripts\setup_venv.bat        :: once: creates .venv and installs everything
 scripts\run_from_source.bat   :: starts ConvertCAD
 ```
 
-Linux: `./scripts/setup_venv.sh` then `./scripts/run_from_source.sh`. You can also
+Linux and macOS: `./scripts/setup_venv.sh` then `./scripts/run_from_source.sh`. You can also
 double-click **`ConvertCAD.pyw`** (no console window) or run `python main.py`: if libraries
 are missing, ConvertCAD lists them and offers to install them. From source, the OCR and
 its built-in model come with the Python packages; other OCR languages are downloaded from
 the program, as in the downloads.
 DWG output needs the converter: Windows uses `vendor\libredwg\win64` (included), Linux
-builds it once with `./scripts/build_libredwg.sh linux`.
+builds it once with `./scripts/build_libredwg.sh linux`, macOS with
+`./scripts/build_libredwg.sh macos` (needs the Xcode command line tools).
 
 ## Using ConvertCAD
 
@@ -194,9 +208,10 @@ option. Exit code: `0` all converted, `1` a conversion failed, `2` bad arguments
 | Windows portable zip | `scripts\build_exe.bat` |
 | Windows installer | `scripts\build_installer.bat` (needs [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3+) |
 | Linux tar.gz · AppImage · .deb | `./scripts/build_linux.sh` · `./scripts/build_appimage.sh` · `./scripts/build_deb.sh` |
+| macOS .dmg · .zip | `./scripts/build_macos.sh` (on a Mac) |
 
 *Actions → build → Run workflow* with **Publish the release** ticked (or pushing a tag such
-as `v1.2.0`) builds **all five** on GitHub Actions and publishes them as the release of the
+as `v1.2.0`) builds **all of them** on GitHub Actions and publishes them as the release of the
 version ([`.github/workflows/build.yml`](.github/workflows/build.yml)). The website
 (`site/`, workflow `pages.yml`) always offers the newest release. The downloadable
 OCR models are published once, as the release `ocr-models-v1`, by the workflow

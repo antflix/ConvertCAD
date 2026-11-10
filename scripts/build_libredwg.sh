@@ -19,8 +19,11 @@
 #   ./scripts/build_libredwg.sh linux     -> vendor/libredwg/linux-x86_64/
 #   ./scripts/build_libredwg.sh windows   -> vendor/libredwg/win64/
 #                                            (cross-compiled with MinGW-w64)
+#   ./scripts/build_libredwg.sh macos     -> vendor/libredwg/macos-<arch>/
+#                                            (arm64 or x86_64: this Mac's)
 #
-# Requirements: gcc, make, xz (linux); gcc-mingw-w64-x86-64 (windows).
+# Requirements: gcc, make, xz (linux); gcc-mingw-w64-x86-64 (windows);
+# Xcode command line tools (macos: clang, make, xz from the system).
 # The Windows binaries are already in the repository, so Windows users never
 # need to run this. Linux builds (scripts/build_linux.sh) call it.
 # ---------------------------------------------------------------------------
@@ -36,7 +39,11 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 echo "== LibreDWG $VERSION for $TARGET"
-echo "$SHA256  $TARBALL" | sha256sum -c -
+if command -v sha256sum >/dev/null 2>&1; then
+  echo "$SHA256  $TARBALL" | sha256sum -c -
+else                                     # macOS
+  echo "$SHA256  $TARBALL" | shasum -a 256 -c -
+fi
 tar -xf "$TARBALL" -C "$WORK"
 cd "$WORK/libredwg-$VERSION"
 for p in "$VENDOR"/patches/*.patch; do
@@ -61,18 +68,32 @@ case "$TARGET" in
     EXE=".exe"
     STRIP=x86_64-w64-mingw32-strip
     ;;
+  macos)
+    # static tools, linked only against the system libraries of macOS;
+    # minimum version: the oldest macOS the app supports
+    export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
+    ./configure "${COMMON[@]}" --prefix="$WORK/install" > "$WORK/configure.log"
+    OUT="$VENDOR/macos-$(uname -m)"
+    EXE=""
+    STRIP=strip
+    ;;
   *)
-    echo "usage: $0 linux|windows" >&2
+    echo "usage: $0 linux|windows|macos" >&2
     exit 2
     ;;
 esac
 
-make -j"$(nproc)" > "$WORK/make.log"
+JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu)"
+make -j"$JOBS" > "$WORK/make.log"
 make install > "$WORK/install.log"
 mkdir -p "$OUT"
 for tool in dxf2dwg dwg2dxf; do
   "$STRIP" -o "$OUT/$tool$EXE" "$WORK/install/bin/$tool$EXE"
 done
+if [ "$TARGET" = "macos" ]; then
+  # Apple Silicon runs only signed code: re-sign (ad hoc) after strip
+  for tool in dxf2dwg dwg2dxf; do codesign --force --sign - "$OUT/$tool"; done
+fi
 if [ "$TARGET" = "windows" ]; then
   # stack-protector runtime used by the MinGW build
   SSP="$(find /usr/lib/gcc/x86_64-w64-mingw32 -name libssp-0.dll | head -n1)"

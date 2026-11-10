@@ -2,6 +2,16 @@
 
 All notable changes to ConvertCAD. Versions follow *major.minor.patch*.
 
+## [Unreleased]
+
+### Added
+- **macOS (Apple Silicon) download:** `ConvertCAD.app` in a `.dmg` (drag to Applications)
+  and a `.zip`, built and published with every release, DWG converter and OCR included.
+  The command line is `ConvertCAD.app/Contents/MacOS/ConvertCAD-cli`. The app is not
+  notarized: confirm it once with right-click → Open. On macOS the update bar offers
+  the new `.dmg`.
+- `scripts/build_macos.sh`; `scripts/build_libredwg.sh macos`; macOS icon (`.icns`).
+
 ## [1.3.0] — 2026-11-04
 
 ### Added

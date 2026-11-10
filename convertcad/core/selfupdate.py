@@ -103,11 +103,19 @@ def platform_tag() -> str:
         return "win64"
     if sys.platform.startswith("linux"):
         return "linux-x86_64"
+    if sys.platform == "darwin":
+        return f"macos-{_mac_arch()}"
     return sys.platform
 
 
+def _mac_arch() -> str:
+    import platform
+    return platform.machine() or "arm64"         # arm64 / x86_64
+
+
 def install_kind(app_dir: str = "") -> str:
-    """source | win-portable | win-installed | appimage | deb | linux-portable"""
+    """source | win-portable | win-installed | macos-app | appimage | deb |
+    linux-portable"""
     if not getattr(sys, "frozen", False) and not app_dir:
         return "source"
     app = app_dir or program_dir()
@@ -122,6 +130,10 @@ def install_kind(app_dir: str = "") -> str:
                for n in names):
             return "win-installed"
         return "win-portable"
+    if sys.platform == "darwin":
+        # ConvertCAD.app (signed bundle: never patched file by file, the
+        # whole app is replaced from the .dmg)
+        return "macos-app"
     if os.environ.get("APPIMAGE"):
         return "appimage"
     if app.startswith(("/opt/", "/usr/")):
@@ -133,6 +145,7 @@ def install_kind(app_dir: str = "") -> str:
 FULL_DOWNLOAD = {
     "win-installed": "-win64-setup.exe",
     "win-portable": "-win64-portable.zip",
+    "macos-app": f"-macos-{_mac_arch()}.dmg",
     "appimage": ".AppImage",
     "deb": "_amd64.deb",
     "linux-portable": "-linux-x86_64.tar.gz",
